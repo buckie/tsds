@@ -1,8 +1,8 @@
 
 module Main where
 
-import Tsds.Types
-import Tsds.Sample
+import BasePrelude
+import Tsds.Col
 
 main :: IO ()
 main = putStrLn "Hello World"
