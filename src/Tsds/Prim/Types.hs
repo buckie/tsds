@@ -1,4 +1,4 @@
-module Tsds.Types.Prim where
+module Tsds.Prim.Types where
 
 import BasePrelude
 import Data.Int ()
