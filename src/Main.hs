@@ -1,9 +1,9 @@
 
 module Main where
 
-import BasePrelude
+import           BasePrelude
 
-import Tsds.Prim.Types
+import           Tsds.Prim.Types
 
 main :: IO ()
 main = putStrLn "Hello World"
