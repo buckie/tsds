@@ -1,3 +1,0 @@
-
-module Tsds.Col where
-
