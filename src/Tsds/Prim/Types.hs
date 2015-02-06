@@ -1,9 +1,9 @@
 
 module Tsds.Prim.Types where
 
-import BasePrelude
-import Data.Int ()
-import Data.Vector.Unboxed.Deriving
+import           BasePrelude
+import           Data.Int                     ()
+import           Data.Vector.Unboxed.Deriving
 
 newtype I64 = I64 Int64 deriving (Bounded)
 
