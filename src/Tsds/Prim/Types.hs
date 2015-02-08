@@ -2,18 +2,14 @@
 module Tsds.Prim.Types where
 
 import           BasePrelude
-import           Data.Default
-import           Data.Int                     ()
-import           Data.Vector.Unboxed
-import           Data.Vector.Unboxed.Deriving
+
+import           Tsds.Col.Types
 
 
-type Date = Int32
-type DateTime = Int64
+newtype Date = Date Int32
 
-derivingUnbox "Maybe"
-    [t| forall a. (Default a, Unbox a) => Maybe a -> (Bool, a) |]
-    [| maybe (False, def) (\ x -> (True, x)) |]
-    [| \ (b, x) -> if b then Just x else Nothing |]
+newtype DateTime = DateTime Int64
+
+
 
 
