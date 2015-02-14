@@ -2,8 +2,9 @@
 module Main where
 
 import           BasePrelude
-import qualified Tsds.Prim.Types as P
-import qualified Tsds.Prim.Unbox as U
+import           Tsds.Prim.Types
+import           Tsds.Prim.Unbox
+import           Tsds.SQL
 
 main :: IO ()
 main = putStrLn "Hello World"
