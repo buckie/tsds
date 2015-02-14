@@ -5,7 +5,6 @@ module Tsds.Prim.Unbox
 
 import           BasePrelude
 import           Data.Default
-import           Data.Int                     ()
 import           Data.Vector.Unboxed
 import           Data.Vector.Unboxed.Deriving
 
