@@ -2,13 +2,13 @@
 module Tsds.Prim.Types where
 
 import           BasePrelude
+import           Tsds.Prim.Unbox ()
+import qualified Data.Vector.Unboxed as VU
 
-import           Tsds.Col.Types
-
-
-newtype Date = Date Int32
-
-newtype DateTime = DateTime Int64
+data Val = I8 Int64
+         | I4 Int32
+         | Date Int32
+         | DateTime Int64
 
 
 
