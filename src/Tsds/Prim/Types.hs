@@ -7,9 +7,12 @@ import           Tsds.Prim.Unbox ()
 
 import qualified Text.PrettyPrint.Boxes as B
 
-data Column = Int32_Col (Vector (Maybe Int32))
-            | Int64_Col (Vector (Maybe Int64))
-            deriving (Show, Read, Eq, Generic)
+-- data Column = Int32_Col (Vector (Maybe Int32))
+--             | Int64_Col (Vector (Maybe Int64))
+--             deriving (Show, Read, Eq, Generic)
+
+-- data family Column a
+-- data instance Column
 
 type ColName = String
 
