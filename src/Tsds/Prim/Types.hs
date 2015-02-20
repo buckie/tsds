@@ -7,6 +7,7 @@ import           Tsds.Prim.Unbox ()
 import qualified Data.IntSet as S
 import qualified Text.PrettyPrint.Boxes as B
 import           Data.Default
+
 class Col a where
   whereIdx :: (a ~ U.Vector (Maybe b), Col a) => (b -> Bool) -> a -> S.IntSet
 
@@ -33,6 +34,9 @@ data Column where
              , Show b
              , Eq b)
              => a -> Column
+
+instance Show Column where
+  show (WrapCol v) = show v
 
 wrapWhere :: (t -> Bool) -> S.IntSet -> S.Key -> Maybe t -> S.IntSet
 wrapWhere fn = \acc idx value -> case value of
@@ -79,6 +83,7 @@ wrapWhere fn = \acc idx value -> case value of
 --                                       Just v -> if fn v
 --                                                    then S.insert idx acc
 --                                                    else acc
+
 type ColName = String
 
 type Table = [(ColName, Column)]
