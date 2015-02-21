@@ -1,12 +1,43 @@
 
 module Tsds.Prim.Types where
 
-import BasePrelude hiding (toList)
-import qualified Data.Vector.Unboxed as U
-import           Tsds.Prim.Unbox ()
+import           BasePrelude hiding (toList)
+import           GHC.TypeLits
+
+import           Data.Proxy
 import qualified Data.IntSet as S
-import qualified Text.PrettyPrint.Boxes as B
 import           Data.Default
+
+import qualified Text.PrettyPrint.Boxes as B
+
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Storable as VS
+
+import           Tsds.Prim.Unbox ()
+
+data Rec :: (u -> *) -> [u] -> * where
+  RNil :: Rec f '[]
+  (:&) :: !(f r) -> !(Rec f rs) -> Rec f (r ': rs)
+
+infixr :&
+
+
+foo :: Rec ColStore [ '("Your Mou",Box,String), '("Age",UBox,Int16)]
+foo =  (CBox Proxy undefined) :&  (CUnbox Proxy undefined) :& RNil
+
+data ColStoreExist :: * where
+    CStore :: (VG.Vector v b, Typeable b,Show b)=> v b -> ColStoreExist
+
+data Store = UBox | Box | Stored
+
+data ColStore :: (Symbol,Store,*) -> * where
+    CStored ::(KnownSymbol nm, VG.Vector VS.Vector a) => prox nm ->  VS.Vector a -> ColStore  '(nm,Stored,a)
+    CUnbox :: (KnownSymbol nm, VG.Vector U.Vector a) => prox nm -> U.Vector a -> ColStore '(nm,UBox,a)
+    CBox :: (KnownSymbol nm, VG.Vector V.Vector a) => prox nm -> V.Vector a -> ColStore '(nm,Box,a)
+
+
 
 class Col a where
   whereIdx :: (a ~ U.Vector (Maybe b), Col a) => (b -> Bool) -> a -> S.IntSet
