@@ -11,7 +11,7 @@ import           Data.Default
 import qualified Text.PrettyPrint.Boxes as B
 
 import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Storable as VS
 
@@ -24,9 +24,6 @@ data Rec :: (u -> *) -> [u] -> * where
 infixr :&
 
 
-foo :: Rec ColStore [ '("Your Mou",Box,String), '("Age",UBox,Int16)]
-foo =  (CBox Proxy undefined) :&  (CUnbox Proxy undefined) :& RNil
-
 data ColStoreExist :: * where
     CStore :: (VG.Vector v b, Typeable b,Show b)=> v b -> ColStoreExist
 
@@ -34,115 +31,61 @@ data Store = UBox | Box | Stored
 
 data ColStore :: (Symbol,Store,*) -> * where
     CStored ::(KnownSymbol nm, VG.Vector VS.Vector a) => prox nm ->  VS.Vector a -> ColStore  '(nm,Stored,a)
-    CUnbox :: (KnownSymbol nm, VG.Vector U.Vector a) => prox nm -> U.Vector a -> ColStore '(nm,UBox,a)
+    CUnbox :: (KnownSymbol nm, VG.Vector VU.Vector a) => prox nm -> VU.Vector a -> ColStore '(nm,UBox,a)
     CBox :: (KnownSymbol nm, VG.Vector V.Vector a) => prox nm -> V.Vector a -> ColStore '(nm,Box,a)
 
+type Int32_Col = VU.Vector (Maybe Int32)
+type Int64_Col = VU.Vector (Maybe Int64)
 
 
-class Col a where
-  whereIdx :: (a ~ U.Vector (Maybe b), Col a) => (b -> Bool) -> a -> S.IntSet
+filterRows ::  forall t . (Typeable t)=> (t -> Bool ) -> ColStoreExist -> Either String S.IntSet
+filterRows pred  (CStore v) |  0 == VG.length v = Left "empty Column"
+                            | Nothing  <- myPred $ v VG.! 0  = Left "Error, MisMatched types, just like python"
+                            | otherwise =  Right $
+                              VG.ifoldl' (\ set idx val ->
+                                          maybe (error "wtf")
+                                                (\b  -> if b then S.insert idx set else set)
+                                          (myPred  (v VG.! idx)) )
+                                        S.empty  v
 
--- instance Col (U.Vector (Maybe Int32)) where
---   whereIdx fn v = U.ifoldl' (wrapWhere fn) S.empty v
+              where
+                myPred :: (Typeable a) => a -> Maybe Bool
+                myPred x= fmap pred $ cast x
 
--- instance Col (U.Vector (Maybe Int64)) where
---   whereIdx fn v = U.ifoldl' (wrapWhere fn) S.empty v
+foo :: Rec ColStore [ '("Your Mou",Box,String), '("Age",UBox,Int16)]
+foo =  (CBox Proxy undefined) :&  (CUnbox Proxy undefined) :& RNil
 
-type Int32_Col = U.Vector (Maybe Int32)
-type Int64_Col = U.Vector (Maybe Int64)
-
-instance Col Int32_Col where
-  whereIdx fn v = U.ifoldl' (wrapWhere fn) S.empty v
-
-instance Col Int64_Col where
-  whereIdx fn v = U.ifoldl' (wrapWhere fn) S.empty v
-
-data Column where
-  WrapCol :: ( Col a
-             , a ~ U.Vector (Maybe b)
-             , U.Unbox b
-             , Default b
-             , Show b
-             , Eq b)
-             => a -> Column
-
-instance Show Column where
-  show (WrapCol v) = show v
-
-wrapWhere :: (t -> Bool) -> S.IntSet -> S.Key -> Maybe t -> S.IntSet
-wrapWhere fn = \acc idx value -> case value of
-                                      Nothing -> acc
-                                      Just v -> if fn v
-                                                   then S.insert idx acc
-                                                   else acc
-
-
-
--- data Column = Int32_Col (U.Vector (Maybe Int32))
---             | Int64_Col (U.Vector (Maybe Int64))
-
-
-
--- whereIdx :: (a -> Bool) -> Column -> S.IntSet
--- whereIdx (fn:: Int32 -> Bool) (Int32_Col v) = U.ifoldl' (wrapWhere fn) S.empty v
--- whereIdx (fn:: Int64 -> Bool) (Int64_Col v) = U.ifoldl' (wrapWhere fn) S.empty v
--- whereIdx _ _ = error "type mismatch"
-
--- wrapWhere :: (t -> Bool) -> S.IntSet -> S.Key -> Maybe t -> S.IntSet
--- wrapWhere fn = \acc idx value -> case value of
---                                       Nothing -> acc
---                                       Just v -> if fn v
---                                                    then S.insert idx acc
---                                                    else acc
-
--- class Col b where
---   whereIdx :: (Col b, Column a ~ b) => (a -> Bool) -> b -> S.IntSet
-
--- data family Column a
--- data instance Column Int32 = Int32_Col (U.Vector (Maybe Int32))
--- data instance Column Int64 = Int64_Col (U.Vector (Maybe Int64))
-
--- instance Col (Column Int32) where
---   whereIdx fn (Int32_Col v) = U.ifoldl' (wrapWhere fn) S.empty v
-
--- instance Col (Column Int64) where
---   whereIdx fn (Int64_Col v) = U.ifoldl' (wrapWhere fn) S.empty v
-
--- wrapWhere :: (t -> Bool) -> S.IntSet -> S.Key -> Maybe t -> S.IntSet
--- wrapWhere fn = \acc idx value -> case value of
---                                       Nothing -> acc
---                                       Just v -> if fn v
---                                                    then S.insert idx acc
---                                                    else acc
-
-type ColName = String
-
-type Table = [(ColName, Column)]
-
-printCell :: Show a => Maybe a -> String
-printCell (Just c) = show c
-printCell Nothing = "<null>"
-
-printCol :: (ColName, Column) -> B.Box
-printCol (name, (WrapCol vals)) = B.punctuateV B.center1 (B.text $ replicate (2+ B.cols col) '-') (header : [col])
-  where
-    header = B.text name
-    col = B.vcat B.center1 $ B.text `fmap` lst vals
-      where
-        lst v = fmap printCell $ U.toList v
-
-printTable :: Table -> IO ()
-printTable table = B.printBox $ B.hsep 3 B.center1 $ printCol `fmap` table
-
-sample_table :: Table
+sample_table :: [(String, ColStoreExist)]
 sample_table = [ ("foo", v)
                , ("bar", w)
                , ("baz", x)
                , ("bing", y)
                ]
   where
-    v = WrapCol $! (U.fromList [Just 1, Just 2, Just 3, Nothing] :: Int32_Col) --U.Vector (Maybe Int32))
-    w = WrapCol $! (U.fromList [Just 1, Just 2, Nothing, Just 4] :: Int32_Col) --U.Vector (Maybe Int32))
-    x = WrapCol $! (U.fromList [Just 1, Just 2, Nothing, Just 4] :: Int32_Col) --U.Vector (Maybe Int32))
-    y = WrapCol $! (U.fromList [Nothing, Just 2, Just 3, Just 4] :: Int32_Col) --U.Vector (Maybe Int32))
+    v = CStore (VU.fromList [Just 1, Just 2, Just 3, Nothing] :: Int32_Col)
+    w = CStore (VU.fromList [Just 1, Just 2, Nothing, Just 4] :: Int32_Col)
+    x = CStore (VU.fromList [Just 1, Just 2, Nothing, Just 4] :: Int32_Col)
+    y = CStore (VU.fromList [Nothing, Just 2, Just 3, Just 4] :: Int32_Col)
+
+sample_col :: (String, ColStoreExist)
+sample_col = ("foo", CStore (VU.fromList [Just 1, Just 2, Just 3, Nothing] :: Int32_Col))
+
+-- type ColName = String
+-- type Table = [(ColName, Column)]
+
+-- printCell :: Show a => Maybe a -> String
+-- printCell (Just c) = show c
+-- printCell Nothing = "<null>"
+
+-- printCol :: (ColName, Column) -> B.Box
+-- printCol (name, (WrapCol vals)) = B.punctuateV B.center1 (B.text $ replicate (2+ B.cols col) '-') (header : [col])
+--   where
+--     header = B.text name
+--     col = B.vcat B.center1 $ B.text `fmap` lst vals
+--       where
+--         lst v = fmap printCell $ VU.toList v
+
+-- printTable :: Table -> IO ()
+-- printTable table = B.printBox $ B.hsep 3 B.center1 $ printCol `fmap` table
+
 
