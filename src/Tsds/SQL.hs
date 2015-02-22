@@ -26,7 +26,10 @@ sample_col = ("foo", CStore (VU.fromList [Just 1, Just 2, Just 3, Nothing] :: In
 
 whereIdx ::  forall t . (Typeable t) => (t -> Bool) -> ColStoreExist -> Either String S.IntSet
 whereIdx fn (CStore v) | VG.null v == True              = Left "empty Column"
-                       | Nothing <- fn' $ v VG.! 0  = Left "Error, MisMatched types, just like python"
+                       | Nothing <- fn' $ v VG.! 0  = Left $ "MisMatched types! Wanted: \""
+                                                              ++ show (typeOf (v VG.! 0))
+                                                              ++ "\" Got: \""
+                                                              ++ show (typeOf (fn)) ++ "\""
                        | otherwise =  Right $
                               VG.ifoldl' (\ set idx val ->
                                           case fn' val of
@@ -37,11 +40,15 @@ whereIdx fn (CStore v) | VG.null v == True              = Left "empty Column"
                                          S.empty  v
 
               where
+                fn' :: (Typeable b) => b -> Maybe Bool
                 fn' = whereWrap fn
 
 whereWrap :: (Typeable a1, Typeable a) => (a -> b) -> a1 -> Maybe b
 whereWrap fn x = fn `fmap` cast x
 
+foo :: Ord a => a -> Maybe a -> Bool
+foo y (Just x) = x > y
+foo _ Nothing = False
 
 -- select :: ColsClause -> Table -> Table
 -- select (n:ns) table =

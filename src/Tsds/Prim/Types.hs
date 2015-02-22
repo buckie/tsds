@@ -60,11 +60,12 @@ printCol printMask (name, (CStore vals)) = B.punctuateV B.center1 (B.text $ repl
     col = B.vcat B.center1 $ B.text `fmap` vals'
       where
         lst = VG.toList vals
+        mask' :: Typeable b => b -> Maybe String
         mask' x = printMask `fmap` (cast x)
         show' m x = case m x of
                        Just y -> y
-                       Nothing -> error $ show x
-        vals' = (show' mask') `fmap` lst
+                       Nothing -> error $ "Mismatched Types! Wanted: \"" ++ show (typeOf x) ++ "\" Got: \"" ++ show (typeOf m) ++ "\""
+        vals' = (\x -> show' mask' x) `fmap` lst
 
 printTable :: Typeable a => (a -> String) -> [(String, ColStoreExist)] -> IO ()
 printTable printMask table = B.printBox $ B.hsep 3 B.center1 $ (printCol printMask) `fmap` table
