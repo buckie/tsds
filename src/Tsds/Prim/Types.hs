@@ -61,19 +61,43 @@ printCol printMask (name, (CStore vals)) = B.punctuateV B.center1 (B.text $ repl
       where
         lst = VG.toList vals
         mask' :: Typeable b => b -> Maybe String
-        mask' x = printMask `fmap` (cast x)
-        show' m x = case m x of
+        mask' = castWrap printMask
+        show' :: Typeable a => a -> String
+        show' x = case mask' x of
                        Just y -> y
-                       Nothing -> error $ "Mismatched Types! Wanted: \"" ++ show (typeOf x) ++ "\" Got: \"" ++ show (typeOf m) ++ "\""
-        vals' = (\x -> show' mask' x) `fmap` lst
+                       Nothing -> error $ "Mismatched Types! Wanted: \"" ++ show (typeOf x) ++ "\" Got: \"" -- ++ show (typeOf mask') ++ "\""
+        vals' = show' `fmap` lst
 
 printTable :: Typeable a => (a -> String) -> [(String, ColStoreExist)] -> IO ()
 printTable printMask table = B.printBox $ B.hsep 3 B.center1 $ (printCol printMask) `fmap` table
 
-noMask :: Show a => a -> String
+castWrap :: (Typeable a1, Typeable a) => (a -> b) -> a1 -> Maybe b
+castWrap fn x = fn `fmap` cast x
+
+noMask :: (Typeable a, Show a) => a -> String
 noMask = show
 
-nullMask :: Show a => Maybe a -> String
+-- Main λ colToString nullMask sample_col
+-- ["wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]",
+--  "wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]",
+--  "wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]",
+--  "wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]"]
+
+colToString :: Typeable a => (a -> String) -> ColStoreExist -> [String]
+colToString printMask (CStore vals) = fmap (show' fn') (VG.toList vals)
+  where
+    show' fn x = case fn x of
+                      Nothing -> "wtf! Wanted: " ++ show (typeOf x) ++ " Got: " ++ show (typeOf fn)
+                      Just v -> v
+    fn' :: Typeable b => b -> Maybe String
+    fn' x = printMask `fmap` (cast x)
+
+nullMask :: (Typeable a, Show a) => Maybe a -> String
 nullMask (Just x) = show x
 nullMask Nothing = "<null>"
+
+sample_col :: ColStoreExist
+sample_col = CStore (VU.fromList [Just 1, Just 2, Just 3, Nothing] :: Int32_Col)
+
+
 

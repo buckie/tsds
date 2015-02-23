@@ -20,9 +20,8 @@ sample_table = [ ("foo", v)
     x = CStore (VU.fromList [Just 1, Just 2, Nothing, Just 4] :: Int32_Col)
     y = CStore (VU.fromList [Nothing, Just 2, Just 3, Just 4] :: Int32_Col)
 
-sample_col :: (String, ColStoreExist)
-sample_col = ("foo", CStore (VU.fromList [Just 1, Just 2, Just 3, Nothing] :: Int32_Col))
-
+sample_vec :: Int32_Col
+sample_vec = VU.fromList [Just 1, Just 2, Just 3, Nothing]
 
 whereIdx ::  forall t . (Typeable t) => (t -> Bool) -> ColStoreExist -> Either String S.IntSet
 whereIdx fn (CStore v) | VG.null v == True              = Left "empty Column"
