@@ -54,19 +54,10 @@ type ColName = String
 type Table = [(ColName, ColStoreExist)]
 
 printCol :: Typeable a => (a -> String) -> (String, ColStoreExist) -> B.Box
-printCol printMask (name, (CStore vals)) = B.punctuateV B.center1 (B.text $ replicate (2+ B.cols col) '-') (header : [col])
+printCol printMask (name, vals) = B.punctuateV B.center1 (B.text $ replicate (2+ B.cols (col !! 0)) '-') (header : col)
   where
     header = B.text name
-    col = B.vcat B.center1 $ B.text `fmap` vals'
-      where
-        lst = VG.toList vals
-        mask' :: Typeable b => b -> Maybe String
-        mask' = castWrap printMask
-        show' :: Typeable a => a -> String
-        show' x = case mask' x of
-                       Just y -> y
-                       Nothing -> error $ "Mismatched Types! Wanted: \"" ++ show (typeOf x) ++ "\" Got: \"" -- ++ show (typeOf mask') ++ "\""
-        vals' = show' `fmap` lst
+    col = B.text `fmap` (colToString printMask vals)
 
 printTable :: Typeable a => (a -> String) -> [(String, ColStoreExist)] -> IO ()
 printTable printMask table = B.printBox $ B.hsep 3 B.center1 $ (printCol printMask) `fmap` table
@@ -74,31 +65,15 @@ printTable printMask table = B.printBox $ B.hsep 3 B.center1 $ (printCol printMa
 castWrap :: (Typeable a1, Typeable a) => (a -> b) -> a1 -> Maybe b
 castWrap fn x = fn `fmap` cast x
 
+colToString :: forall a . (Typeable a) => (a -> String) -> ColStoreExist -> [String]
+colToString printMask (CStore vals) = fmap (maybe (error "Type Mismatch") printMask . cast ) (VG.toList vals)
+
 noMask :: (Typeable a, Show a) => a -> String
 noMask = show
-
--- Main λ colToString nullMask sample_col
--- ["wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]",
---  "wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]",
---  "wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]",
---  "wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]"]
-
-colToString :: forall a . Typeable a => (a -> String) -> ColStoreExist -> [String]
-colToString printMask (CStore vals) = fmap (show' fn') (VG.toList vals)
-  where
-    show' :: Typeable a => (a -> Maybe [Char]) -> a -> [Char]
-    show' fn x = maybe ("wtf! Wanted: " ++ show (typeOf x) ++ " Got: " ++ show (typeOf fn)) id $ fn x
-    fn' :: Typeable a => a -> Maybe String
-    fn' x = printMask `fmap` (cast x)
 
 nullMask :: (Typeable a, Show a) => Maybe a -> String
 nullMask (Just x) = show x
 nullMask Nothing = "<null>"
 
-sample_col :: ColStoreExist
-sample_col = CStore (VU.fromList [Just 1, Just 2, Just 3, Nothing] :: Int32_Col)
-
--- sample_print :: [String]
--- sample_print = colToString nullMask sample_col
 
 

@@ -20,6 +20,9 @@ sample_table = [ ("foo", v)
     x = CStore (VU.fromList [Just 1, Just 2, Nothing, Just 4] :: Int32_Col)
     y = CStore (VU.fromList [Nothing, Just 2, Just 3, Just 4] :: Int32_Col)
 
+sample_col :: ColStoreExist
+sample_col = CStore (VU.fromList [Just 1, Just 2, Just 3, Nothing] :: Int32_Col)
+
 sample_vec :: Int32_Col
 sample_vec = VU.fromList [Just 1, Just 2, Just 3, Nothing]
 
