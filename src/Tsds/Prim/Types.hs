@@ -5,75 +5,68 @@ import           BasePrelude hiding (toList)
 import           Data.Proxy ()
 
 import qualified Text.PrettyPrint.Boxes as B
-
+import qualified Data.IntSet as S
 import qualified Data.Vector.Unboxed as VU
-import qualified Data.Vector.Generic as VG
 
 import           Tsds.Prim.Unbox ()
 
--- import           GHC.TypeLits
--- import qualified Data.Vector as V
--- import qualified Data.Vector.Storable as VS
--- data Rec :: (u -> *) -> [u] -> * where
---   RNil :: Rec f '[]
---   (:&) :: !(f r) -> !(Rec f rs) -> Rec f (r ': rs)
+class (Show a) => Column a where
+  nullShow :: a -> [String]
+  whereIdx32 :: (Int32 -> Bool) -> a -> S.IntSet
+  whereIdx64 :: (Int64 -> Bool) -> a -> S.IntSet
+  getRows :: S.IntSet -> a -> a
 
--- infixr :&
+data Col = Int32_Col (VU.Vector (Maybe Int32))
+         | Int64_Col (VU.Vector (Maybe Int64))
+         | Date_Col  (VU.Vector (Maybe Int32))
+         | DTime_Col (VU.Vector (Maybe Int64))
+         deriving (Read, Show, Eq)
 
--- foo :: Rec ColStore [ '("Your Mou",Box,String), '("Age",UBox,Int16)]
--- foo =  (CBox Proxy undefined) :&  (CUnbox Proxy undefined) :& RNil
--- data Store = UBox | Box | Store
+nullShowVal :: (Show a) => Maybe a -> String
+nullShowVal (Just v) = show v
+nullShowVal _        = "<null>"
 
--- data ColStore :: (Symbol, Store, *) -> * where
---   CStored :: (KnownSymbol nm, VG.Vector VS.Vector a) => prox nm -> VS.Vector a -> ColStore '(nm, Stored, a)
---   CUnbox  :: (KnownSymbol nm, VG.Vector VU.Vector a) => prox nm -> VU.Vector a -> ColStore '(nm, UBox,   a)
---   CBox    :: (KnownSymbol nm, VG.Vector V.Vector  a) => prox nm -> V.Vector  a -> ColStore '(nm, Box,    a)
+--                               VG.ifoldl' (\ set idx val ->
+--                                           case fn' val of
+--                                                Nothing   -> error "wtf"
+--                                                Just True    -> S.insert idx set
+--                                                _         -> set
+--                                          )
+--                                          S.empty  v
 
-
-data ColStoreExist :: * where
-  CStore :: (VG.Vector v b, Typeable b, Show b) => v b -> ColStoreExist
-
-type Int32_Col = VU.Vector (Maybe Int32)
-type Int64_Col = VU.Vector (Maybe Int64)
-type Date_Col  = VU.Vector (Maybe Int32)
-type DTime_Col = VU.Vector (Maybe Int64)
-
--- class (Show a) => Nullable a where
---   nullShow :: Maybe a -> String
-
--- instance Nullable (Maybe Int32) where
---   nullShow (Just c) = show c
---   nullShow Nothing = "<null>"
-
--- instance Nullable (Maybe Int64) where
---   nullShow (Just c) = show c
---   nullShow Nothing = "<null>"
+--               where
+--                 fn' :: (Typeable b) => b -> Maybe Bool
+--                 fn' = whereWrap fn
 
 
-type ColName = String
-type Table = [(ColName, ColStoreExist)]
+instance Column Col where
+  nullShow (Int32_Col v) = nullShowVal `fmap` (VU.toList v)
+  nullShow (Int64_Col v) = nullShowVal `fmap` (VU.toList v)
+  nullShow (Date_Col  v) = nullShowVal `fmap` (VU.toList v)
+  nullShow (DTime_Col v) = nullShowVal `fmap` (VU.toList v)
 
-printCol :: Typeable a => (a -> String) -> (String, ColStoreExist) -> B.Box
-printCol printMask (name, vals) = B.punctuateV B.center1 (B.text $ replicate (2+ B.cols (col !! 0)) '-') (header : col)
+  getRows set (Int32_Col v) = Int32_Col $ VU.ifilter (\idx _ -> S.member idx set) v
+  getRows set (Int64_Col v) = Int64_Col $ VU.ifilter (\idx _ -> S.member idx set) v
+  getRows set (Date_Col  v) = Date_Col $ VU.ifilter (\idx _ -> S.member idx set) v
+  getRows set (DTime_Col v) = DTime_Col $ VU.ifilter (\idx _ -> S.member idx set) v
+
+  whereIdx32 fn (Int32_Col v) = VU.ifoldl' (\set idx val -> if maybe False fn val then S.insert idx set else set) S.empty v
+  whereIdx32 fn (Date_Col v) = VU.ifoldl' (\set idx val -> if maybe False fn val then S.insert idx set else set) S.empty v
+  whereIdx32 _ _ = error "Type Mismatch"
+
+  whereIdx64 fn (Int64_Col v) = VU.ifoldl' (\set idx val -> if maybe False fn val then S.insert idx set else set) S.empty v
+  whereIdx64 fn (DTime_Col v) = VU.ifoldl' (\set idx val -> if maybe False fn val then S.insert idx set else set) S.empty v
+  whereIdx64 _ _ = error "Type Mismatch"
+
+
+type Table = [(String, Col)]
+
+printCol :: (String, Col) -> B.Box
+printCol (name, vals) = B.punctuateV B.center1 (B.text $ replicate (2+ B.cols col) '-') (header : [col])
   where
     header = B.text name
-    col = B.text `fmap` (colToString printMask vals)
+    col = B.vcat B.center1 $ B.text `fmap` (nullShow vals)
 
-printTable :: Typeable a => (a -> String) -> [(String, ColStoreExist)] -> IO ()
-printTable printMask table = B.printBox $ B.hsep 3 B.center1 $ (printCol printMask) `fmap` table
-
-castWrap :: (Typeable a1, Typeable a) => (a -> b) -> a1 -> Maybe b
-castWrap fn x = fn `fmap` cast x
-
-colToString :: forall a . (Typeable a) => (a -> String) -> ColStoreExist -> [String]
-colToString printMask (CStore vals) = fmap (maybe (error "Type Mismatch") printMask . cast ) (VG.toList vals)
-
-noMask :: (Typeable a, Show a) => a -> String
-noMask = show
-
-nullMask :: (Typeable a, Show a) => Maybe a -> String
-nullMask (Just x) = show x
-nullMask Nothing = "<null>"
-
-
+printTable :: Table -> IO ()
+printTable table = B.printBox $ B.hsep 3 B.center1 $ printCol `fmap` table
 
