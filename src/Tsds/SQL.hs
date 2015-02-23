@@ -6,7 +6,6 @@ import           BasePrelude
 import           Tsds.Prim.Types
 import qualified Data.IntSet as S
 import qualified Data.Vector.Unboxed as VU
-import qualified Data.Vector.Generic as VG
 
 sample_table :: Table
 sample_table = [ ("foo", v)
@@ -23,46 +22,19 @@ sample_table = [ ("foo", v)
 sample_col :: Col
 sample_col = Int32_Col (VU.fromList [Just 1, Just 2, Just 3, Nothing])
 
-sample_column :: Column
+sample_column :: (String, Col)
 sample_column = ("foo", sample_col)
 
 sample_vec :: VU.Vector (Maybe Int32)
 sample_vec = VU.fromList [Just 1, Just 2, Just 3, Nothing]
 
--- whereIdx ::  forall t . (Typeable t) => (t -> Bool) -> ColStoreExist -> Either String S.IntSet
--- whereIdx fn (CStore v) | VG.null v == True              = Left "empty Column"
---                        | Nothing <- fn' $ v VG.! 0  = Left $ "MisMatched types! Wanted: \""
---                                                               ++ show (typeOf (v VG.! 0))
---                                                               ++ "\" Got: \""
---                                                               ++ show (typeOf (fn)) ++ "\""
---                        | otherwise =  Right $
---                               VG.ifoldl' (\ set idx val ->
---                                           case fn' val of
---                                                Nothing   -> error "wtf"
---                                                Just True    -> S.insert idx set
---                                                _         -> set
---                                          )
---                                          S.empty  v
+select :: [String] -> Table -> Table
+select (n:[]) table = maybe (error "Col Not Found") (\x -> (n,x)) (lookup n table) : []
+select (n:ns) table = maybe (error "Col Not Found") (\x -> (n,x)) (lookup n table) : select ns table
+select _ _ = error "No Table Given"
 
---               where
---                 fn' :: (Typeable b) => b -> Maybe Bool
---                 fn' = whereWrap fn
-
--- whereWrap :: (Typeable a1, Typeable a) => (a -> b) -> a1 -> Maybe b
--- whereWrap fn x = fn `fmap` cast x
-
--- foo :: Ord a => a -> Maybe a -> Bool
--- foo y (Just x) = x > y
--- foo _ Nothing = False
-
--- select :: ColsClause -> Table -> Table
--- select (n:ns) table =
---   case ns of
---       [] -> col : []
---       _  -> col : select ns table
---   where
---     col = case lookup n table of
---                Nothing -> error "column not found"
---                Just x  -> (n,x)
--- select [] _ = error "no columns given"
+selectRows :: Table -> S.IntSet -> Table
+selectRows ((cName, vals):[]) set = (cName, getRows set vals) : []
+selectRows ((cName, vals):cs) set = (cName, getRows set vals) : selectRows cs set
+selectRows [] _ = error "No Table Given"
 
