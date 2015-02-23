@@ -83,12 +83,12 @@ noMask = show
 --  "wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]",
 --  "wtf! Wanted: Maybe Int32 Got: Maybe Int32 -> Maybe [Char]"]
 
-colToString :: Typeable a => (a -> String) -> ColStoreExist -> [String]
+colToString :: forall a . Typeable a => (a -> String) -> ColStoreExist -> [String]
 colToString printMask (CStore vals) = fmap (show' fn') (VG.toList vals)
   where
     show' :: Typeable a => (a -> Maybe [Char]) -> a -> [Char]
     show' fn x = maybe ("wtf! Wanted: " ++ show (typeOf x) ++ " Got: " ++ show (typeOf fn)) id $ fn x
-    fn' :: Typeable b => b -> Maybe String
+    fn' :: Typeable a => a -> Maybe String
     fn' x = printMask `fmap` (cast x)
 
 nullMask :: (Typeable a, Show a) => Maybe a -> String
@@ -98,7 +98,7 @@ nullMask Nothing = "<null>"
 sample_col :: ColStoreExist
 sample_col = CStore (VU.fromList [Just 1, Just 2, Just 3, Nothing] :: Int32_Col)
 
-sample_print :: [String]
-sample_print = colToString nullMask sample_col
+-- sample_print :: [String]
+-- sample_print = colToString nullMask sample_col
 
 
