@@ -1,10 +1,7 @@
 
 module Main where
 
-import           BasePrelude
-import           Tsds.Prim.Types
-import           Tsds.Prim.Unbox
-import           Tsds.SQL
+import Tsds.Types
 
 main :: IO ()
-main = putStrLn "Hello World"
+main = undefined

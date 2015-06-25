@@ -1,9 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Tsds.Prim.Unbox
-    where
+module Tsds.Prim.Unbox where
 
-import           BasePrelude
 import           Data.Default
 import           Data.Vector.Unboxed
 import           Data.Vector.Unboxed.Deriving
